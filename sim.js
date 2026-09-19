@@ -1,5 +1,5 @@
 // Pure simulation. No DOM. Importable from node for tests.
-import { N, LAND, WATER, TREES, EMPTY, ROAD, RAIL, HWY, WIRE, ZR, ZRD, ZID, BLD, RUBBLE, PIPE, SUBWAY,
+import { N, LAND, WATER, TREES, EMPTY, ROAD, RAIL, HWY, WIRE, XING, ZR, ZRD, ZID, BLD, RUBBLE, PIPE, SUBWAY, WIREX,
   POW, WAT, FIRE, FLOOD, COAL, PUMP, TOWER, PARK, CAT, TOOLS, K } from './data.js';
 
 export const NN = N * N;
@@ -26,6 +26,8 @@ export function hashStr(s) {
 export const idx = (x, y) => y * N + x;
 export const isZone = s => s >= ZR && s <= ZID;
 export const zk = s => (s - ZR) % 3; // 0 r, 1 c, 2 i
+export const isRoad = s => s === ROAD || s === HWY || s === XING;
+const crossing = (a, b) => (a === ROAD && b === RAIL) || (a === RAIL && b === ROAD);
 export const anchorOf = (S, i) => i - (S.off[i] >> 4) - (S.off[i] & 15) * N;
 const clamp8 = v => v < 0 ? 0 : v > 255 ? 255 : v | 0;
 const clamp1 = v => v < -1 ? -1 : v > 1 ? 1 : v;
@@ -124,13 +126,15 @@ export function canPlace(S, tool, x, y, ug) {
   if (!T || x < 0 || y < 0 || x >= N || y >= N) return -1;
   const i = idx(x, y), sf = S.surf[i], tr = S.terrain[i];
   if (tool === 'bulldoze') {
-    if (ug) return S.under[i] ? T.cost : -1;
+    if (ug) return S.under[i] & (PIPE | SUBWAY) ? T.cost : -1;
     return sf !== EMPTY || tr === TREES ? T.cost : -1;
   }
   if (T.under) return S.under[i] & T.under ? 0 : T.cost;          // pipes/subways may run under water
   if (T.surf === WIRE && tr === WATER) return sf === EMPTY ? T.cost : sf === WIRE ? 0 : -1; // lines may cross water
   if (tr === WATER) return -1;                                       // ponytail: no bridges; add a BRIDGE surf if wanted
-  if (T.surf) return sf === EMPTY || sf === RUBBLE ? T.cost : sf === T.surf ? 0 : -1;
+  if (T.surf === WIRE && (isRoad(sf) || sf === RAIL)) return S.under[i] & WIREX ? 0 : T.cost;
+  if (T.surf) return sf === EMPTY || sf === RUBBLE || crossing(T.surf, sf) ? T.cost
+    : sf === T.surf || (sf === XING && (T.surf === ROAD || T.surf === RAIL)) ? 0 : -1;
   const B = CAT[T.bld];
   if (T.bld === PUMP && !adjWater(S, x, y)) return -1;
   const ok = footprint(S, x, y, B, j => S.terrain[j] !== WATER && (S.surf[j] === EMPTY || S.surf[j] === RUBBLE));
@@ -143,11 +147,12 @@ export function place(S, tool, x, y, ug) {
   S.money -= c;
   const T = TOOLS[tool], i = idx(x, y);
   if (tool === 'bulldoze') {
-    if (ug) S.under[i] = 0;
+    if (ug) S.under[i] &= ~(PIPE | SUBWAY);
     else if (S.surf[i] === BLD) clearBld(S, i, EMPTY);
-    else { S.surf[i] = EMPTY; S.lvl[i] = 0; S.flags[i] &= ~FIRE; if (S.terrain[i] === TREES) S.terrain[i] = LAND; }
+    else { S.surf[i] = EMPTY; S.under[i] &= ~WIREX; S.lvl[i] = 0; S.flags[i] &= ~FIRE; if (S.terrain[i] === TREES) S.terrain[i] = LAND; }
   } else if (T.under) S.under[i] |= T.under;
-  else if (T.surf) { S.surf[i] = T.surf; S.lvl[i] = 0; if (S.terrain[i] === TREES) S.terrain[i] = LAND; }
+  else if (T.surf === WIRE && S.surf[i] !== EMPTY && S.surf[i] !== RUBBLE) S.under[i] |= WIREX;
+  else if (T.surf) { S.surf[i] = crossing(T.surf, S.surf[i]) ? XING : T.surf; S.lvl[i] = 0; if (S.terrain[i] === TREES) S.terrain[i] = LAND; }
   else footprint(S, x, y, CAT[T.bld], (j, dx, dy) => {
     S.surf[j] = BLD; S.bid[j] = T.bld; S.off[j] = dx << 4 | dy; S.lvl[j] = 0;
     if (S.terrain[j] === TREES) S.terrain[j] = LAND;
@@ -212,7 +217,7 @@ function waterFlood(S) {
 // Chebyshev distance to nearest road, capped at 4 (two-pass chamfer)
 function roadDist(S) {
   const { rd, surf } = S;
-  for (let i = 0; i < NN; i++) rd[i] = surf[i] === ROAD || surf[i] === HWY ? 0 : 4;
+  for (let i = 0; i < NN; i++) rd[i] = isRoad(surf[i]) ? 0 : 4;
   for (let y = 0; y < N; y++) for (let x = 0; x < N; x++) {
     const i = idx(x, y); let v = rd[i];
     if (x > 0) v = Math.min(v, rd[i - 1] + 1);
@@ -270,7 +275,7 @@ function pollutionPass(S) {
     const s = surf[i]; let e = P[i] * .6;
     if (isZone(s)) { if (zk(s) === 2) e += lvl[i] * 20; }
     else if (s === BLD) { if (bid[i] === COAL) e += 200; else if (bid[i] === PARK) e -= 30; }
-    else if (s === ROAD || s === HWY) e += traffic[i] / 4;
+    else if (isRoad(s)) e += traffic[i] / 4;
     if (terrain[i] === TREES) e -= 30;
     tmp[i] = clamp8(e);
   }
@@ -287,7 +292,7 @@ function trafficPass(S) {
     for (let yy = Math.max(0, y - 3); yy <= Math.min(N - 1, y + 3); yy++)
       for (let xx = Math.max(0, x - 3); xx <= Math.min(N - 1, x + 3); xx++) {
         const j = idx(xx, yy);
-        if (surf[j] === ROAD || surf[j] === HWY) tmp[j] = clamp8(tmp[j] + amt);
+        if (isRoad(surf[j])) tmp[j] = clamp8(tmp[j] + amt);
       }
   }
   for (let i = 0; i < NN; i++) traffic[i] = (traffic[i] + (surf[i] === HWY ? tmp[i] >> 2 : tmp[i])) >> 1;
@@ -358,7 +363,7 @@ function monthEnd(S) {
   for (let i = 0; i < NN; i++) {
     const s = surf[i];
     if (isZone(s)) inc += K.POP_PER_LVL[lvl[i]] * K.TAXBASE[zk(s)] * S.tax[zk(s)] / 100;
-    else if (s === ROAD || s === RAIL || s === HWY) tiles++;
+    else if (isRoad(s) || s === RAIL) tiles++;
     else if (s === BLD && !off[i]) { const B = CAT[bid[i]], f = FUND[B[5]]; exp += B[4] * (f ? S.fund[f] / 100 : 1); }
     tiles += (under[i] & 1) + (under[i] >> 1 & 1);
   }

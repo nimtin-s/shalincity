@@ -1,5 +1,5 @@
 // node test.js — no framework. Throws on first failure.
-import { N, WATER, LAND, EMPTY, ROAD, BLD, RUBBLE, POW, WAT, FIRE, ZR } from './data.js';
+import { N, WATER, LAND, EMPTY, ROAD, RAIL, XING, BLD, RUBBLE, POW, WAT, FIRE, ZR } from './data.js';
 import { newGame, tick, place, canPlace, save, load, idx, ignite, recompute } from './sim.js';
 
 const ok = (c, m) => { if (!c) throw new Error('FAIL: ' + m); console.log('ok', m); };
@@ -23,6 +23,11 @@ const flat = S => { S.terrain.fill(LAND); S.nearWater.fill(0); }; // determinist
   S.terrain[idx(11, 10)] = LAND; S.money = 1e6;
   ok(place(S, 'police', 10, 10) && S.surf[idx(12, 12)] === BLD, 'police footprint set');
   ok(place(S, 'bulldoze', 12, 12) && S.surf[idx(10, 10)] === EMPTY && S.bid[idx(11, 11)] === 0, 'bulldoze clears all 9 via anchor');
+  ok(place(S, 'rail', 5, 5) && S.surf[idx(5, 5)] === XING && !place(S, 'road', 5, 5) && !place(S, 'rail', 5, 5), 'rail over road → crossing, idempotent');
+  place(S, 'rail', 7, 7); ok(place(S, 'road', 7, 7) && S.surf[idx(7, 7)] === XING, 'road over rail → crossing');
+  ok(place(S, 'bulldoze', 7, 7) && S.surf[idx(7, 7)] === EMPTY, 'bulldoze crossing');
+  place(S, 'road', 8, 8); ok(place(S, 'wire', 8, 8) && S.surf[idx(8, 8)] === ROAD && !place(S, 'wire', 8, 8), 'wire over road keeps road, idempotent');
+  ok(canPlace(S, 'bulldoze', 8, 8, 1) === -1 && place(S, 'bulldoze', 8, 8) && S.under[idx(8, 8)] === 0, 'bulldozing road drops its wire');
   S.money = 5; ok(!place(S, 'road', 6, 6), 'no money → no place');
 }
 // power

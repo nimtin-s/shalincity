@@ -1,7 +1,7 @@
 // Isometric Canvas 2D renderer. World unit: tile = 64x32 px at zoom 1.
-import { N, WATER, TREES, EMPTY, ROAD, RAIL, HWY, WIRE, ZRD, BLD, RUBBLE, PIPE, SUBWAY,
+import { N, WATER, TREES, EMPTY, ROAD, RAIL, HWY, WIRE, XING, ZRD, BLD, RUBBLE, PIPE, SUBWAY, WIREX,
   POW, WAT, FIRE, FLOOD, CAT, TOOLS } from './data.js';
-import { NN, isZone, zk, canPlace, idx } from './sim.js';
+import { NN, isZone, zk, isRoad as roadSurf, canPlace, idx } from './sim.js';
 
 export const cam = { ox: 0, oy: 0, z: 1 };
 let cv, ctx, far, farCtx, mini, mctx, dpr = 1, W = 0, H = 0;
@@ -87,7 +87,7 @@ function strokeLinks(x, y, m, color, width, lift) { ctx.strokeStyle = color; ctx
 export function tileColor(S, i) {
   const s = S.surf[i];
   if (s === EMPTY || s === WIRE) return TER[S.terrain[i]];
-  if (s === ROAD) return '#777'; if (s === RAIL) return '#875'; if (s === HWY) return '#555';
+  if (s === ROAD || s === XING) return '#777'; if (s === RAIL) return '#875'; if (s === HWY) return '#555';
   if (s === RUBBLE) return '#765'; if (s === BLD) return CAT[S.bid[i]][8];
   return shade(ZONE[zk(s)], .5 + S.lvl[i] / 16);
 }
@@ -106,9 +106,10 @@ function range() {
   return [Math.max(0, Math.min(...xs) - 1), Math.min(N - 1, Math.max(...xs) + 2),
     Math.max(0, Math.min(...ys) - 1), Math.min(N - 1, Math.max(...ys) + 2)];
 }
-const isRoad = S => i => S.surf[i] === ROAD || S.surf[i] === HWY;
-const isRail = S => i => S.surf[i] === RAIL || (S.surf[i] === BLD && S.bid[i] === 12);
-const isWire = S => i => S.surf[i] === WIRE || S.surf[i] === BLD;
+const isRoad = S => i => roadSurf(S.surf[i]);
+const isRail = S => i => S.surf[i] === RAIL || S.surf[i] === XING || (S.surf[i] === BLD && S.bid[i] === 12);
+const rail = (S, i, x, y) => { const m = mask(S, i, isRail(S)); strokeLinks(x, y, m, '#654', 9); strokeLinks(x, y, m, '#bbb', 3); };
+const isWire = S => i => S.surf[i] === WIRE || S.surf[i] === BLD || (S.under[i] & WIREX);
 
 function ground(S, x0, x1, y0, y1) {
   const { terrain, surf, lvl } = S;
@@ -116,25 +117,25 @@ function ground(S, x0, x1, y0, y1) {
     const i = idx(x, y), s = surf[i];
     ctx.fillStyle = TER[terrain[i]]; diamond(ctx, x, y, .5); ctx.fill();
     if (s === EMPTY || s === WIRE) continue;
-    if (s === ROAD) { ctx.fillStyle = '#777'; ctx.fill(); strokeLinks(x, y, mask(S, i, isRoad(S)), '#ee9', 2); }
+    if (s === ROAD || s === XING) { ctx.fillStyle = '#777'; ctx.fill(); strokeLinks(x, y, mask(S, i, isRoad(S)), '#ee9', 2); if (s === XING) rail(S, i, x, y); }
     else if (s === HWY) {
       ctx.fillStyle = '#444'; ctx.fill(); const m = mask(S, i, isRoad(S));
       strokeLinks(x, y, m, '#666', 18); strokeLinks(x, y, m, '#ee5', 2);
     }
-    else if (s === RAIL) { const m = mask(S, i, isRail(S)); strokeLinks(x, y, m, '#654', 9); strokeLinks(x, y, m, '#bbb', 3); }
+    else if (s === RAIL) rail(S, i, x, y);
     else if (s === RUBBLE) { ctx.fillStyle = '#765'; ctx.fill(); }
     else if (s === BLD) { ctx.fillStyle = shade(CAT[S.bid[i]][8], .6); ctx.fill(); }
     else { ctx.fillStyle = shade(ZONE[zk(s)], s >= ZRD ? .7 : .9); ctx.fill(); if (!lvl[i]) { ctx.strokeStyle = '#0003'; ctx.lineWidth = 1; ctx.stroke(); } }
   }
 }
 function objects(S, x0, x1, y0, y1) {
-  const { terrain, surf, lvl, flags, off, bid } = S;
+  const { terrain, surf, lvl, flags, off, bid, under } = S;
   const flash = S.tick >> 1 & 1;
   ctx.lineWidth = 1;
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     const i = idx(x, y), s = surf[i];
     if (s === EMPTY) { if (terrain[i] === TREES) box(x + .3, y + .3, .4, .4, 10 + (i * 7 % 5), '#2a6a2a'); }
-    else if (s === WIRE) {
+    else if (s === WIRE || (under[i] & WIREX)) {
       const [cx, cy] = px(x + .5, y + .5);
       ctx.strokeStyle = '#864'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx, cy); ctx.lineTo(cx, cy - 22); ctx.stroke();
       strokeLinks(x, y, mask(S, i, isWire(S)), '#333', 1, 20);
