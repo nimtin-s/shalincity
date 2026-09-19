@@ -48,3 +48,4 @@ function frame(t) {
 requestAnimationFrame(frame);
 window.G = G; // debug/console access
 navigator.serviceWorker?.register('sw.js');
+navigator.serviceWorker?.addEventListener('controllerchange', () => location.reload()); // pick up a new deploy right away
