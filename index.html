@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ShalinCity</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b1a2b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<style>
+*{box-sizing:border-box}
+html,body{height:100dvh;margin:0;overflow:hidden;background:#0b1a2b;color:#eee;font:14px system-ui,sans-serif;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
+#c{position:fixed;inset:0;width:100%;height:100%;touch-action:none;display:block}
+#hud{position:fixed;top:0;left:0;right:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:6px 10px;padding-top:calc(6px + env(safe-area-inset-top));background:#000a;backdrop-filter:blur(6px)}
+#hud b{font-variant-numeric:tabular-nums}
+#rci{display:flex;gap:3px;align-items:flex-end;height:32px}
+#rci i{width:8px;height:2px;border-radius:2px;background:#4c4}#rci i:nth-child(2){background:#48f}#rci i:nth-child(3){background:#cc4}
+#rci i.neg{background:#f44}
+#speed button,#hud select,#hud>button{min-height:36px;padding:0 10px;border:1px solid #fff3;border-radius:8px;background:#234;color:#eee}
+#speed{display:flex;gap:4px}#speed button.sel{background:#3a6}
+#tools{position:fixed;bottom:0;left:0;right:0;display:flex;gap:4px;overflow-x:auto;padding:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom));background:#000a;backdrop-filter:blur(6px);scrollbar-width:none}
+#tools button{min-width:58px;height:58px;flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:18px;line-height:1;border:1px solid #fff2;border-radius:8px;background:#234;color:#eee;padding:0}
+#tools button small{font-size:9px;opacity:.85}
+#tools button.sel{background:#3a6}
+#tools .gap{flex:none;width:10px}
+#mini{position:fixed;right:8px;bottom:calc(82px + env(safe-area-inset-bottom));width:160px;height:80px;background:#0006;border:1px solid #fff4;border-radius:4px;touch-action:none}
+@media(min-width:900px){#tools{top:56px;bottom:0;right:auto;width:84px;flex-direction:column;overflow-y:auto}#tools .gap{width:auto;height:10px}#mini{bottom:16px;width:240px;height:120px}}
+button{font:inherit}
+dialog{background:#123;color:#eee;border:1px solid #fff4;border-radius:12px;max-width:92vw;width:420px;padding:16px}
+dialog::backdrop{background:#0008}
+dialog h2{margin:0 0 10px;font-size:18px}
+dialog label{display:grid;grid-template-columns:90px 1fr 44px;align-items:center;gap:8px;margin:6px 0}
+dialog input[type=range]{width:100%}
+dialog .row{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+dialog button{min-height:40px;padding:0 12px;border:1px solid #fff3;border-radius:8px;background:#234;color:#eee}
+dialog input[type=text]{padding:8px;border-radius:8px;border:1px solid #fff3;background:#012;color:#eee}
+#msg{position:fixed;top:calc(64px + env(safe-area-inset-top));left:50%;transform:translateX(-50%);background:#000c;padding:8px 14px;border-radius:8px;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud">
+  <b id="money">$0</b>
+  <span>👥 <b id="pop">0</b></span>
+  <b id="date"></b>
+  <div id="rci" title="R C I demand"><i id="dr"></i><i id="dc"></i><i id="di"></i></div>
+  <div id="speed"><button data-speed="0">⏸</button><button data-speed="1">▶</button><button data-speed="2">▶▶</button><button data-speed="3">▶▶▶</button></div>
+  <select id="view">
+    <option value="">No overlay</option><option value="power">Power</option><option value="water">Water</option>
+    <option value="pollution">Pollution</option><option value="crime">Crime</option><option value="value">Land value</option>
+    <option value="traffic">Traffic</option><option value="police">Police</option><option value="fire">Fire cover</option>
+    <option value="edu">Education</option><option value="health">Health</option><option value="transit">Transit</option>
+  </select>
+  <button id="budgetBtn">💰 Budget</button>
+  <button id="menuBtn">☰</button>
+</div>
+<div id="tools"></div>
+<canvas id="mini"></canvas>
+<div id="msg"></div>
+
+<dialog id="budget">
+  <h2>Budget</h2>
+  <p id="hist"></p><p id="stats"></p>
+  <label>Res tax <input type="range" data-tax="0" min="0" max="20"><span></span></label>
+  <label>Com tax <input type="range" data-tax="1" min="0" max="20"><span></span></label>
+  <label>Ind tax <input type="range" data-tax="2" min="0" max="20"><span></span></label>
+  <label>Police <input type="range" data-fund="police" min="0" max="100"><span></span></label>
+  <label>Fire <input type="range" data-fund="fire" min="0" max="100"><span></span></label>
+  <label>Transport <input type="range" data-fund="transport" min="0" max="100"><span></span></label>
+  <label>Education <input type="range" data-fund="edu" min="0" max="100"><span></span></label>
+  <label>Health <input type="range" data-fund="health" min="0" max="100"><span></span></label>
+  <div class="row"><button class="close">Done</button></div>
+</dialog>
+
+<dialog id="menu">
+  <h2>ShalinCity</h2>
+  <div class="row"><input id="seed" type="text" placeholder="Map name / seed"><button id="randBtn">🎲</button><button id="newBtn">New city</button></div>
+  <div class="row"><button id="saveBtn">Save now</button></div>
+  <label style="grid-template-columns:auto 1fr"><input type="checkbox" id="disasters">Random disasters</label>
+  <label style="grid-template-columns:auto 1fr"><input type="checkbox" id="ugToggle">Underground view</label>
+  <p>Trigger disaster:</p>
+  <div class="row"><button data-disaster="1"></button><button data-disaster="2"></button><button data-disaster="3"></button><button data-disaster="4"></button><button data-disaster="5"></button></div>
+  <p style="opacity:.7;font-size:12px">One finger: use tool · Two fingers: pan &amp; zoom · Roads carry power · Zones need power, water (pipes) and a road within 3 tiles.</p>
+  <div class="row"><button class="close">Close</button></div>
+</dialog>
+<script type="module" src="main.js"></script>
+</body>
+</html>

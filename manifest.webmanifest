@@ -1,0 +1,10 @@
+{
+  "name": "ShalinCity",
+  "short_name": "ShalinCity",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0b1a2b",
+  "theme_color": "#0b1a2b",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+}
