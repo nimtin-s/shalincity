@@ -5,7 +5,7 @@ export const N = 128;
 export const LAND = 0, WATER = 1, TREES = 2;
 // surf
 export const EMPTY = 0, ROAD = 1, RAIL = 2, HWY = 3, WIRE = 4,
-  ZR = 5, ZC = 6, ZI = 7, ZRD = 8, ZCD = 9, ZID = 10, BLD = 11, RUBBLE = 12, XING = 13; // XING = road+rail crossing
+  ZR = 5, ZC = 6, ZI = 7, ZRD = 8, ZCD = 9, ZID = 10, BLD = 11, RUBBLE = 12, XING = 13, HXING = 14; // XING = road+rail crossing, HXING = highway+rail
 // under bits
 export const PIPE = 1, SUBWAY = 2, WIREX = 4; // WIREX = power line strung over a road/rail tile
 // flags bits

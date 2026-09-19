@@ -1,5 +1,5 @@
 // Isometric Canvas 2D renderer. World unit: tile = 64x32 px at zoom 1.
-import { N, WATER, TREES, EMPTY, ROAD, RAIL, HWY, WIRE, XING, ZRD, BLD, RUBBLE, PIPE, SUBWAY, WIREX,
+import { N, WATER, TREES, EMPTY, ROAD, RAIL, HWY, WIRE, XING, HXING, ZRD, BLD, RUBBLE, PIPE, SUBWAY, WIREX,
   POW, WAT, FIRE, FLOOD, CAT, TOOLS } from './data.js';
 import { NN, isZone, zk, isRoad as roadSurf, canPlace, idx } from './sim.js';
 
@@ -87,7 +87,7 @@ function strokeLinks(x, y, m, color, width, lift) { ctx.strokeStyle = color; ctx
 export function tileColor(S, i) {
   const s = S.surf[i];
   if (s === EMPTY || s === WIRE) return TER[S.terrain[i]];
-  if (s === ROAD || s === XING) return '#777'; if (s === RAIL) return '#875'; if (s === HWY) return '#555';
+  if (s === ROAD || s === XING) return '#777'; if (s === RAIL) return '#875'; if (s === HWY || s === HXING) return '#555';
   if (s === RUBBLE) return '#765'; if (s === BLD) return CAT[S.bid[i]][8];
   return shade(ZONE[zk(s)], .5 + S.lvl[i] / 16);
 }
@@ -107,7 +107,7 @@ function range() {
     Math.max(0, Math.min(...ys) - 1), Math.min(N - 1, Math.max(...ys) + 2)];
 }
 const isRoad = S => i => roadSurf(S.surf[i]);
-const isRail = S => i => S.surf[i] === RAIL || S.surf[i] === XING || (S.surf[i] === BLD && S.bid[i] === 12);
+const isRail = S => i => S.surf[i] === RAIL || S.surf[i] === XING || S.surf[i] === HXING || (S.surf[i] === BLD && S.bid[i] === 12);
 const rail = (S, i, x, y) => { const m = mask(S, i, isRail(S)); strokeLinks(x, y, m, '#654', 9); strokeLinks(x, y, m, '#bbb', 3); };
 const isWire = S => i => S.surf[i] === WIRE || S.surf[i] === BLD || (S.under[i] & WIREX);
 
@@ -118,9 +118,10 @@ function ground(S, x0, x1, y0, y1) {
     ctx.fillStyle = TER[terrain[i]]; diamond(ctx, x, y, .5); ctx.fill();
     if (s === EMPTY || s === WIRE) continue;
     if (s === ROAD || s === XING) { ctx.fillStyle = '#777'; ctx.fill(); strokeLinks(x, y, mask(S, i, isRoad(S)), '#ee9', 2); if (s === XING) rail(S, i, x, y); }
-    else if (s === HWY) {
+    else if (s === HWY || s === HXING) {
       ctx.fillStyle = '#444'; ctx.fill(); const m = mask(S, i, isRoad(S));
       strokeLinks(x, y, m, '#666', 18); strokeLinks(x, y, m, '#ee5', 2);
+      if (s === HXING) rail(S, i, x, y);
     }
     else if (s === RAIL) rail(S, i, x, y);
     else if (s === RUBBLE) { ctx.fillStyle = '#765'; ctx.fill(); }
