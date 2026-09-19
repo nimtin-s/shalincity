@@ -170,6 +170,17 @@ function clearBld(S, i, to) {
   });
 }
 
+// ---------- undo (one snapshot per gesture) ----------
+const UNDO = ['terrain', 'surf', 'under', 'bid', 'off', 'lvl'];
+export function snapshot(S) { const o = { money: S.money, spent: 0 }; for (const g of UNDO) o[g] = S[g].slice(); return o; }
+export function restore(S, o) {
+  const { surf, lvl } = S;
+  for (let i = 0; i < NN; i++) if (surf[i] !== o.surf[i]) { lvl[i] = o.lvl[i]; S.dirtyTiles.push(i); }
+  for (const g of UNDO) if (g !== 'lvl') S[g].set(o[g]);
+  S.money += o.spent; // refund what the gesture cost, keep income earned since
+  recompute(S);
+}
+
 // ---------- networks ----------
 // Labels connected components from sources; FLAG set where component supply >= demand.
 function flood(S, FLAG, srcCap, conducts, useOf) {

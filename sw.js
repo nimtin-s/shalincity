@@ -1,4 +1,4 @@
-const CACHE = 'shalincity-v3';
+const CACHE = 'shalincity-v4';
 const ASSETS = ['./', './index.html', './main.js', './data.js', './sim.js', './render.js', './input.js', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS))); self.skipWaiting(); });
 self.addEventListener('activate', e => {

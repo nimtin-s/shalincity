@@ -1,6 +1,6 @@
 // node test.js — no framework. Throws on first failure.
 import { N, WATER, LAND, EMPTY, ROAD, RAIL, XING, HXING, BLD, RUBBLE, POW, WAT, FIRE, ZR } from './data.js';
-import { newGame, tick, place, canPlace, save, load, idx, ignite, recompute } from './sim.js';
+import { newGame, tick, place, canPlace, save, load, idx, ignite, recompute, snapshot, restore } from './sim.js';
 
 const ok = (c, m) => { if (!c) throw new Error('FAIL: ' + m); console.log('ok', m); };
 const flat = S => { S.terrain.fill(LAND); S.nearWater.fill(0); }; // deterministic test board
@@ -29,6 +29,8 @@ const flat = S => { S.terrain.fill(LAND); S.nearWater.fill(0); }; // determinist
   place(S, 'hwy', 9, 9); ok(place(S, 'rail', 9, 9) && S.surf[idx(9, 9)] === HXING && !place(S, 'hwy', 9, 9) && canPlace(S, 'road', 9, 9) === -1, 'rail over highway → crossing');
   place(S, 'road', 8, 8); ok(place(S, 'wire', 8, 8) && S.surf[idx(8, 8)] === ROAD && !place(S, 'wire', 8, 8), 'wire over road keeps road, idempotent');
   ok(canPlace(S, 'bulldoze', 8, 8, 1) === -1 && place(S, 'bulldoze', 8, 8) && S.under[idx(8, 8)] === 0, 'bulldozing road drops its wire');
+  { const snap = snapshot(S), m = S.money; place(S, 'zr', 20, 20); place(S, 'zr', 21, 20); S.lvl[idx(21, 20)] = 3; snap.spent = m - S.money; S.money += 100; restore(S, snap);
+    ok(S.surf[idx(20, 20)] === EMPTY && S.lvl[idx(21, 20)] === 0 && S.money === m + 100, 'undo restores tiles, refunds cost, keeps later income'); }
   S.money = 5; ok(!place(S, 'road', 6, 6), 'no money → no place');
 }
 // power

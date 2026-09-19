@@ -18,7 +18,7 @@ addEventListener('resize', () => { R.resize(); G.dirty = true; });
 document.addEventListener('visibilitychange', () => { if (document.hidden) G.save(); });
 
 const $ = s => document.querySelector(s);
-const el = { money: $('#money'), pop: $('#pop'), date: $('#date'), msg: $('#msg'), dem: [$('#dr'), $('#dc'), $('#di')] };
+const el = { money: $('#money'), pop: $('#pop'), date: $('#date'), msg: $('#msg'), undo: $('#undoBtn'), dem: [$('#dr'), $('#dc'), $('#di')] };
 let msgT = 0;
 function hud(S) {
   el.money.textContent = '$' + S.money.toLocaleString();
@@ -26,6 +26,7 @@ function hud(S) {
   el.date.textContent = MONTHS[S.month] + ' ' + S.year;
   S.dem.forEach((d, k) => { const b = el.dem[k]; b.style.height = Math.abs(d) * 14 + 2 + 'px'; b.classList.toggle('neg', d < 0); });
   document.querySelectorAll('[data-speed]').forEach(b => b.classList.toggle('sel', +b.dataset.speed === S.speed));
+  el.undo.disabled = !G.undo.length;
   if (S.msg) { el.msg.textContent = S.msg; el.msg.style.opacity = 1; msgT = performance.now() + 2500; S.msg = ''; }
   else if (msgT && performance.now() > msgT) { el.msg.style.opacity = 0; msgT = 0; }
 }

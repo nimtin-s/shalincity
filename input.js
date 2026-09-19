@@ -1,6 +1,6 @@
 // Pointer input + HUD/palette/dialog wiring.
 import { N, TOOLS, TOOL_GROUPS, CAT } from './data.js';
-import { place, newGame, hashStr, startDisaster, DISASTERS } from './sim.js';
+import { place, newGame, hashStr, startDisaster, DISASTERS, snapshot, restore } from './sim.js';
 import { cam, toTile, zoomAt, jumpTo, miniToWorld, buildFar, center } from './render.js';
 
 const $ = s => document.querySelector(s);
@@ -42,7 +42,8 @@ export function setup(G) {
 
   // pointers
   const ptrs = new Map();
-  let mode = null, pinch0 = null, last = null, painted = false;
+  let mode = null, pinch0 = null, last = null, painted = false, snap = null;
+  G.undo = [];
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('pointerdown', e => {
     cv.setPointerCapture(e.pointerId);
@@ -57,6 +58,7 @@ export function setup(G) {
     mode = ui.tool === 'pan' || e.button === 1 || e.button === 2 ? 'pan' : 'tool';
     last = null; painted = false;
     const t = toTile(e.clientX, e.clientY);
+    if (mode === 'tool') snap = snapshot(G.S);
     if (mode === 'tool' && TOOLS[ui.tool].rect) ui.rect = [t[0], t[1], t[0], t[1]];
     ui.hover = t; dirty();
   });
@@ -100,6 +102,8 @@ export function setup(G) {
       } else if (T.line) { if (!painted) doPlace(t[0], t[1]); }
       else if (T.bld && tap) doPlace(t[0], t[1]);
     }
+    if (snap && G.S.money !== snap.money) { snap.spent = snap.money - G.S.money; G.undo.push(snap); if (G.undo.length > 10) G.undo.shift(); }
+    snap = null;
     ui.rect = null; if (e.pointerType !== 'mouse') ui.hover = null;
     mode = null; dirty();
   };
@@ -116,13 +120,14 @@ export function setup(G) {
   // HUD
   document.querySelectorAll('[data-speed]').forEach(b => b.onclick = () => { G.S.speed = +b.dataset.speed; dirty(); });
   $('#view').onchange = e => { ui.view = e.target.value; dirty(); };
+  $('#undoBtn').onclick = () => { const s = G.undo.pop(); if (s) { restore(G.S, s); G.S.msg = 'Undone'; dirty(); } };
   $('#budgetBtn').onclick = () => openBudget(G);
   $('#menuBtn').onclick = () => openMenu(G);
 
   // dialogs
-  const budget = $('#budget'), menu = $('#menu');
+  const budget = $('#budget'), menu = $('#menu'), help = $('#help');
   let prevSpeed = 1;
-  for (const d of [budget, menu]) {
+  for (const d of [budget, menu, help]) {
     d.addEventListener('close', () => { G.S.speed = prevSpeed; dirty(); });
     d.querySelector('.close').onclick = () => d.close();
   }
@@ -149,12 +154,16 @@ export function setup(G) {
   $('#ugToggle').onchange = e => { ui.ugToggle = e.target.checked; setTool(ui.tool); };
   menu.querySelectorAll('[data-disaster]').forEach(b => b.onclick = () => { startDisaster(G.S, +b.dataset.disaster); menu.close(); });
   $('#saveBtn').onclick = () => { G.save(); G.S.msg = 'Saved'; menu.close(); };
+  const openHelp = () => { if (menu.open) menu.close(); pause(); help.showModal(); try { localStorage.setItem('shalincity-help', '1'); } catch (e) {} };
+  $('#helpBtn').onclick = openHelp;
+  let seen = false; try { seen = !!localStorage.getItem('shalincity-help'); } catch (e) {}
+  if (!seen) openHelp();
   $('#randBtn').onclick = () => { $('#seed').value = Math.random().toString(36).slice(2, 8); };
   $('#newBtn').onclick = () => {
     if (!confirm('Start a new city? Current city will be overwritten.')) return;
     const s = $('#seed').value.trim();
     G.S = newGame(s ? hashStr(s) : (Math.random() * 2 ** 32) >>> 0);
-    buildFar(G.S); center(); G.save(); menu.close(); dirty();
+    G.undo.length = 0; buildFar(G.S); center(); G.save(); menu.close(); dirty();
   };
   // manual trigger labels
   menu.querySelectorAll('[data-disaster]').forEach(b => b.textContent = DISASTERS[+b.dataset.disaster]);

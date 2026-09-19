@@ -20,6 +20,7 @@ html,body{height:100dvh;margin:0;overflow:hidden;background:#0b1a2b;color:#eee;f
 #rci{display:flex;gap:3px;align-items:flex-end;height:32px}
 #rci i{width:8px;height:2px;border-radius:2px;background:#4c4}#rci i:nth-child(2){background:#48f}#rci i:nth-child(3){background:#cc4}
 #rci i.neg{background:#f44}
+#hud>button:disabled{opacity:.35}
 #speed button,#hud select,#hud>button{min-height:36px;padding:0 10px;border:1px solid #fff3;border-radius:8px;background:#234;color:#eee}
 #speed{display:flex;gap:4px}#speed button.sel{background:#3a6}
 #tools{position:fixed;bottom:0;left:0;right:0;display:flex;gap:4px;overflow-x:auto;padding:6px;padding-bottom:calc(6px + env(safe-area-inset-bottom));background:#000a;backdrop-filter:blur(6px);scrollbar-width:none}
@@ -55,6 +56,7 @@ dialog input[type=text]{padding:8px;border-radius:8px;border:1px solid #fff3;bac
     <option value="traffic">Traffic</option><option value="police">Police</option><option value="fire">Fire cover</option>
     <option value="edu">Education</option><option value="health">Health</option><option value="transit">Transit</option>
   </select>
+  <button id="undoBtn" title="Undo">↶</button>
   <button id="budgetBtn">💰 Budget</button>
   <button id="menuBtn">☰</button>
 </div>
@@ -79,13 +81,29 @@ dialog input[type=text]{padding:8px;border-radius:8px;border:1px solid #fff3;bac
 <dialog id="menu">
   <h2>ShalinCity</h2>
   <div class="row"><input id="seed" type="text" placeholder="Map name / seed"><button id="randBtn">🎲</button><button id="newBtn">New city</button></div>
-  <div class="row"><button id="saveBtn">Save now</button></div>
+  <div class="row"><button id="saveBtn">Save now</button><button id="helpBtn">❓ How to play</button></div>
   <label style="grid-template-columns:auto 1fr"><input type="checkbox" id="disasters">Random disasters</label>
   <label style="grid-template-columns:auto 1fr"><input type="checkbox" id="ugToggle">Underground view</label>
   <p>Trigger disaster:</p>
   <div class="row"><button data-disaster="1"></button><button data-disaster="2"></button><button data-disaster="3"></button><button data-disaster="4"></button><button data-disaster="5"></button></div>
   <p style="opacity:.7;font-size:12px">One finger: use tool · Two fingers: pan &amp; zoom · Roads carry power · Zones need power, water (pipes) and a road within 3 tiles.</p>
   <div class="row"><button class="close">Close</button></div>
+</dialog>
+<dialog id="help">
+  <h2>How to play</h2>
+  <p><b>Goal:</b> grow a city. Zones only develop when they have <b>power</b>, <b>water</b> and a <b>road within 3 tiles</b>.</p>
+  <ol style="padding-left:18px;line-height:1.5">
+    <li>Pick a tool from the palette, then <b>tap or drag on the map</b>. Buildings show a green (ok) or red (blocked) footprint.</li>
+    <li>Place a <b>power plant</b> (Coal or Wind). Roads and zones carry power; use <b>Power lines</b> to bridge gaps or cross water.</li>
+    <li><b>Drag roads</b>, then <b>drag rectangles</b> of Res / Com / Ind zones beside them. “+” zones grow taller.</li>
+    <li>Put a <b>Water Pump</b> next to water, power it, and drag <b>Pipes</b> along your roads (the view goes underground while the Pipe tool is active).</li>
+    <li>Add Police, Fire, School and Hospital as the city grows — each covers a radius. Parks and trees raise land value; industry and traffic pollute.</li>
+    <li>Watch the <b>R C I bars</b> in the top bar: a tall green / blue / yellow bar means that zone type is in demand; red means oversupply.</li>
+    <li>Open <b>💰 Budget</b> to set taxes and department funding. It pops up every January.</li>
+  </ol>
+  <p><b>Controls</b> — one finger / left mouse: use tool · two fingers / right-drag: pan &amp; pinch-zoom · wheel: zoom · space: pause · ↶ undoes your last action · overlays (top bar) show pollution, crime, value, traffic, power, water and coverage.</p>
+  <p>Disasters are on by default; turn them off or trigger one from ☰. Your city autosaves and works offline once installed.</p>
+  <div class="row"><button class="close">Let’s build</button></div>
 </dialog>
 <script type="module" src="main.js"></script>
 </body>
